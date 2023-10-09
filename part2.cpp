@@ -1,63 +1,122 @@
 #include <iostream>
 #include <string>
+using namespace std;
 
-// Existing ORM using the old grammar
-class OldORM {
-public:
-    std::string executeQuery(const std::string& query) {
-        // Simulate executing the query and returning results
-        return "Executing old query: " + query;
-    }
-};
+// class ORM {  // ADAPTEE
+// public:
+//     ORM() {
+//         query = "SELECT * FROM table";
+//     }
+    
+//     string getQuery() const{
+//         return query;
+//     }
 
-// New database using the new grammar
-class NewDatabase {
-public:
-    std::string executeQuery(const std::string& query) {
-        // Simulate executing the query and returning results
-        return "Executing new query: " + query;
-    }
-};
+//     void setQuery(const string& newQuery){
+//         query = newQuery;
+//     }
 
-// Adapter to translate between the grammars
-class GrammarAdapter {
-public:
-    GrammarAdapter(OldORM& orm) : orm(orm) {}
+// private:
+//     string query;   
+// };
 
-    std::string translateQuery(const std::string& query) {
-        // Translate the query from the new grammar to the old grammar
-        size_t fromPos = query.find("FROM");
-        size_t selectPos = query.find("SELECT");
-        if (fromPos != std::string::npos && selectPos != std::string::npos && fromPos < selectPos) {
-            std::string tableName = query.substr(fromPos + 5, selectPos - fromPos - 6);
-            return "SELECT * FROM " + tableName;
-        } else {
-            return query; // No translation needed
+// class Database {  // TARGET
+// public:
+//     string executeQuery(const string& query) {
+//         return "Executing new query: " + query;
+//     }
+// };
+
+// // Adapter to translate between the grammars
+// class Adapter {  // ADAPTER
+// public:
+//     Adapter(ORM& orm) : orm(orm) {}
+
+//     void executeQuery() {
+//         string query = orm.getQuery();
+//         cout << "Translating the query..." << endl;
+//         string translatedQuery = translateQuery(query);
+//         cout << "Translated query: " << translatedQuery << endl;
+//         string result = database.executeQuery(translatedQuery);
+//         cout << "Result from the database: " << result << endl;
+//         orm.setQuery(result);  // Update the result in the ORM
+//     }
+
+//     string translateQuery(string query) {
+//         cout << "The query is now getting translated." << endl;
+//         return "FROM table SELECT * "; 
+//     }
+
+// private:
+//     ORM& orm;
+//     Database database;
+// };
+
+// int main() {
+//     ORM orm;
+//     Adapter adapter(orm); 
+//     adapter.executeQuery(); 
+//     cout << "Result stored in ORM: " << orm.getQuery() << endl;
+
+//     return 0;
+// }
+
+
+class Database {  // TARGET
+    public:
+        virtual ~Database(){};
+
+        virtual string CorrectGrammar() const {
+            return "Database: The default target's behavior.";
         }
-    }
-
-    std::string executeQuery(const std::string& query) {
-        std::string translatedQuery = translateQuery(query);
-        return orm.executeQuery(translatedQuery);
-    }
-
-private:
-    OldORM& orm;
 };
+
+class ORM {  // ADAPTEE
+    public:
+        ORM(){
+            query = "SELECT * FROM table";
+        }
+        string grammar() const {
+            return query;
+        }
+    private:
+        string query;
+};
+
+class Adapter : public Database {  // ADAPTER
+    private:
+        ORM *adaptee_;
+    public:
+        Adapter(ORM *adaptee) : adaptee_(adaptee) {}
+        virtual string CorrectGrammar() const {
+            return "ADAPTER: (TRANSLATED)  FROM table SELECT *";
+        }
+        ~Adapter(){};
+};
+
+void Client(Database *target) {  // CLIENT
+    cout << target->CorrectGrammar();
+}
 
 int main() {
-    OldORM oldORM;
-    NewDatabase newDatabase;
+  Database *target = new Database();
+  ORM *adaptee = new ORM();
+  Adapter *adapter = new Adapter(adaptee);
+  cout << "\n";
+  cout << "Client: The ORM wants to use this SQL statement:\n";
+  cout << "ORM: " << adaptee->grammar();
+  cout << "\n\n";
+  cout << "Client: The ORM class only supports typical SQL grammar. We however want to use the grammar from our new Database." << endl;
+  cout << "Thus we have to translate the ORM grammar.";
+  cout << "\n\n";
+  cout << "Our Adapter translates the grammar to: \n";
+  Client(adapter);
+  cout << "\n\n";
 
-    // Using the adapter with the old ORM
-    GrammarAdapter adapter(oldORM);
-    std::string query = "FROM table1 SELECT *";
-    std::string result = adapter.executeQuery(query);
-    std::cout << result << std::endl;
+  delete target;
+  delete adaptee;
+  delete adapter;
 
-    // Using the new database directly
-    result = newDatabase.executeQuery("SELECT * FROM table1");
-    std::cout << result << std::endl;
-
-    return 0;
+  return 0;
 }
+
